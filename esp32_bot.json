@@ -1,0 +1,654 @@
+{
+  "name": "esp32_bot",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 19
+            },
+            {
+              "triggerAtHour": 7,
+              "triggerAtMinute": 30
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -2480,
+        0
+      ],
+      "id": "4fd1c807-abc5-4999-964e-04bb020e1877",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=### 현재 정보\n- 오늘 날짜: {{ $now.format('yyyy-MM-dd') }}\n- 브리핑 대상: {{ $now.hour < 12 ? '오늘' : '내일' }} ({{ $now.hour < 12 ? $now.format('yyyy-MM-dd') : $now.plus({days: 1}).format('yyyy-MM-dd') }})\n\n### 도구 실행 및 브리핑 명령\n1. 아래 시간 범위로 'Search Timetable1', 'Search Event1', 'Search CheckList1' 도구를 각각 실행해 일정을 확인해줘.\n   - 시작: {{ $now.hour < 12 ? $now.format('yyyy-MM-dd') : $now.plus({days: 1}).format('yyyy-MM-dd') }}T00:00:00+09:00\n   - 종료: {{ $now.hour < 12 ? $now.format('yyyy-MM-dd') : $now.plus({days: 1}).format('yyyy-MM-dd') }}T23:59:59+09:00\n\n2. 'OpenWeatherMap' 도구로 인천 날씨를 확인해줘.\n\n3. [에러 방지 주의사항 - 매우 중요]\n- 3개의 캘린더 도구 중 검색 결과가 없거나 'undefined/null'이 반환되는 도구가 있더라도 절대 오류를 내거나 데이터 합치기(reduce)를 시도하지 마. 해당 캘린더는 그냥 \"일정이 없다\"고 간주하고, 정상적으로 검색된 나머지 데이터와 날씨 정보만으로 브리핑을 완성해.\n- 일정의 원래 제목(summary)을 반드시 출력해. '[학교 수업]' 같은 섹션 명칭으로 원래 일정 이름을 덮어쓰지 마.\n- 14:50 이라는 시간 경계선을 정확히 지켜서 분류해줘.\n- 최종 답변은 다정한 브리핑 텍스트만 보여주고, JSON 데이터나 코드는 절대 생략해.\n\n이제 {이름넣기}의 {{ $now.hour < 12 ? '오늘' : '내일' }} 일과를 정리해줘!",
+        "options": {
+          "systemMessage": "=너는 8살 '{이름넣기}'의 일정을 관리하는 똑똑하고 다정한 인공지능 육아 비서야. \n전달받은 캘린더 데이터를 바탕으로 아래 규칙을 엄격히 준수하여 브리핑을 작성해줘.\n\n1. 빈 데이터(Undefined/Null) 예외 처리 (최우선 규칙):\n- 도구 실행 결과가 아예 없거나 에러(undefined/null)가 발생하더라도 당황하지 마. \n- 데이터가 비어있는 항목은 억지로 계산하거나 요약하려고 시도하지 말고, 정상적으로 수신된 데이터만 활용해. 검색된 게 하나도 없으면 \"등록된 일정이 없어요\"라고 답변해.\n\n2. 일정 제목(Summary) 보존:\n- 캘린더에서 검색된 일정의 원래 이름(summary)을 절대 수정하거나 생략하지 마. \n- 출력 시 반드시 \"시작시간 - 종료시간 일정제목\" 형식을 유지해. (예: 11:00 - 12:00 리듬체조)\n\n3. 일정 분류 로직 (절대 준수):\n- 모든 일정은 시작 시간을 기준으로 아래 섹션에 배치해.\n- [평일 (월~금)]: \n  * 시작 시간이 14:50 미만(00:00~14:49) → [📚 학교 수업] 섹션에 배치\n  * 시작 시간이 14:50 이상(14:50~23:59) → [🎹 학원 수업] 섹션에 배치\n- [주말 (토~일)]: \n  * 시간과 관계없이 모든 일정 → [🎹 학원 수업] 섹션에 배치\n\n4. 데이터 기반 답변:\n- 캘린더 도구 결과가 없으면 절대 일정을 지어내지 마. \n- JSON 원문이나 소스 코드는 답변에 절대 포함하지 마.\n\n5. 말투 및 형식:\n- \"~요\", \"~예요\" 체를 사용하여 다정하게 말하고, 사용자를 \"아빠\"라고 부르지 마.\n- 제목: [☀️ 오늘의 시작] 또는 [🌙 내일의 준비]\n- 날씨 정보 뒤에 따뜻한 조언 한 줄을 꼭 추가해줘."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -2288,
+        0
+      ],
+      "id": "12a6f2de-2e69-438f-8b89-e113f98465ef",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "10879d4d83a4b4b47a9f5b67ed0beb7ac6b99a0a8375d2ad915780ffc7926715@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "#5 소미일정"
+        },
+        "timeMin": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
+        "timeMax": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        -2224,
+        208
+      ],
+      "id": "559ef916-7a95-48a8-9aa2-848a1a685115",
+      "name": "Search Event1"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "56269d3a8ca5c71eb9df6d5e172a02660d70b9ddfd89a30fcab28d7e6db99109@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "#6 소미시간표"
+        },
+        "timeMin": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
+        "timeMax": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        -2080,
+        208
+      ],
+      "id": "27880722-7c5d-40ea-a7d0-be4b6a4aab4e",
+      "name": "Search Timetable1",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "axzUvdr1S4hHhdMQ",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "554e3b5e103d8ddb2e79cb14bd9d520de3b391980296c8efceac6681d89c0df4@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "#7 소미체크리스트"
+        },
+        "timeMin": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
+        "timeMax": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        -1936,
+        208
+      ],
+      "id": "16043aad-4197-46f8-a110-c5a141f3f782",
+      "name": "Search CheckList1",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "axzUvdr1S4hHhdMQ",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "C0A9APL78U9",
+          "mode": "list",
+          "cachedResultName": "somi_schedule"
+        },
+        "text": "={{ $json.output }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        -1984,
+        0
+      ],
+      "id": "eb125b42-21bb-4408-96e5-8522f94fe65d",
+      "name": "Send a message1",
+      "webhookId": "88e1a6e0-d5ca-447d-a4cf-5650b592dfd3",
+      "credentials": {
+        "slackApi": {
+          "id": "WKTT3uCFoOH0OsKd",
+          "name": "Slack account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -2512,
+        208
+      ],
+      "id": "16f7956c-a46b-4f79-af6e-94ebc0ac862e",
+      "name": "Google Gemini Chat Model1"
+    },
+    {
+      "parameters": {
+        "operation": "5DayForecast",
+        "cityName": "Incheon,kr",
+        "language": "kr"
+      },
+      "type": "n8n-nodes-base.openWeatherMapTool",
+      "typeVersion": 1,
+      "position": [
+        -2368,
+        208
+      ],
+      "id": "77111bbf-d503-4aa1-bc03-3dffdc9d272b",
+      "name": "OpenWeatherMap"
+    },
+    {
+      "parameters": {
+        "content": "## 슬랙 알림",
+        "height": 448,
+        "width": 800
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2576,
+        -80
+      ],
+      "id": "73060092-acac-468a-9f2c-5c364c5c7a21",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Bot 알림",
+        "height": 448,
+        "width": 1056,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2576,
+        400
+      ],
+      "id": "d25f647a-c223-45f0-aed7-9dab2ad7e441",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "audio/mpeg"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -1712,
+        480
+      ],
+      "id": "442688d2-8523-4c61-98f1-f2724ae9b0c9",
+      "name": "Respond to Webhook2",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first();\nconst base64Audio = item.json.audioContent;\n\n// Base64 문자열을 완벽한 순수 바이너리 버퍼(Buffer)로 강제 변환\nconst buffer = Buffer.from(base64Audio, 'base64');\n\nitem.binary = {\n  data: {\n    data: buffer.toString('base64'), // n8n 내부 규격에 맞게 재정렬\n    mimeType: 'audio/mpeg',\n    fileName: 'tts.mp3'\n  }\n};\n\ndelete item.json.audioContent;\nreturn item;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1872,
+        480
+      ],
+      "id": "06fff4cf-94d3-4a66-92b9-65cbe51a0936",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://texttospeech.googleapis.com/v1/text:synthesize?key={API KEY}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n  JSON.stringify({\n    \"input\": {\n      \"text\": $json.output\n    },\n    \"voice\": {\n      \"languageCode\": \"ko-KR\",\n      \"name\": \"ko-KR-Neural2-A\"\n    },\n    \"audioConfig\": {\n      \"audioEncoding\": \"MP3\",\n      \"sampleRateHertz\": 16000\n    }\n  })\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -2032,
+        480
+      ],
+      "id": "6f73ae98-bdc0-49e9-9a99-80ef9533af55",
+      "name": "HTTP Request2"
+    },
+    {
+      "parameters": {
+        "operation": "5DayForecast",
+        "cityName": "Incheon,kr",
+        "language": "kr"
+      },
+      "type": "n8n-nodes-base.openWeatherMapTool",
+      "typeVersion": 1,
+      "position": [
+        -2384,
+        688
+      ],
+      "id": "e27e5865-b09b-4122-98d3-69d7db9ad4bd",
+      "name": "OpenWeatherMap1",
+      "credentials": {
+        "openWeatherMapApi": {
+          "id": "cJOMkxRBfwiK0enT",
+          "name": "OpenWeatherMap account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -2528,
+        688
+      ],
+      "id": "0e8697a5-1aef-4cab-ab7b-825049ec15dc",
+      "name": "Google Gemini Chat Model3",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "2DTp0iXeCLtbcowE",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "554e3b5e103d8ddb2e79cb14bd9d520de3b391980296c8efceac6681d89c0df4@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "#7 소미체크리스트"
+        },
+        "timeMin": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
+        "timeMax": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        -1952,
+        688
+      ],
+      "id": "6ddf1496-ee4b-4941-8310-e4629bd81017",
+      "name": "Search CheckList2",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "axzUvdr1S4hHhdMQ",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "56269d3a8ca5c71eb9df6d5e172a02660d70b9ddfd89a30fcab28d7e6db99109@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "#6 소미시간표"
+        },
+        "timeMin": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
+        "timeMax": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        -2096,
+        688
+      ],
+      "id": "bb7c9337-7e20-434c-8f19-227258820ac9",
+      "name": "Search Timetable2",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "axzUvdr1S4hHhdMQ",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "10879d4d83a4b4b47a9f5b67ed0beb7ac6b99a0a8375d2ad915780ffc7926715@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "#5 소미일정"
+        },
+        "timeMin": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
+        "timeMax": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        -2240,
+        688
+      ],
+      "id": "bad4d802-9d80-4fc1-b234-d775f2fedb07",
+      "name": "Search Event2",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "axzUvdr1S4hHhdMQ",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=### 현재 기준 정보\n- 오늘 날짜: {{ $now.format('yyyy-MM-dd') }}\n- 현재 시각: {{ $now.hour }}시 {{ $now.minute }}분\n- 브리핑 대상: {{ $now.hour < 16 ? '오늘' : '내일' }} ({{ $now.hour < 16 ? $now.format('yyyy-MM-dd') : $now.plus({days: 1}).format('yyyy-MM-dd') }})\n\n### 도구 실행 가이드 (매우 중요)\n대상 날짜인 **{{ $now.hour < 12 ? $now.format('yyyy-MM-dd') : $now.plus({days: 1}).format('yyyy-MM-dd') }}**의 일정을 조회하기 위해 아래 범위를 사용해줘:\n- 시작 범위 (After): {{ $now.hour < 12 ? $now.format('yyyy-MM-dd') : $now.plus({days: 1}).format('yyyy-MM-dd') }}T00:00:00+09:00\n- 종료 범위 (Before): {{ $now.hour < 12 ? $now.format('yyyy-MM-dd') : $now.plus({days: 1}).format('yyyy-MM-dd') }}T23:59:59+09:00\n\n1. 'Search Timetable2', 'Search Event2', 'Search CheckList2' 도구에 위 시간 범위를 입력해서 일정을 조회해줘.\n2. 'OpenWeatherMap1' 도구로 해당 날짜의 인천 날씨를 확인해줘.\n\n## 일정 분류 및 표시 규칙 (절대 준수):\n- 모든 일정의 시작 시간을 '24시간 형식'으로 먼저 확인하세요.\n- [평일 (월~금)]: \n  * 시작 시간이 14:50 미만(00:00~14:49) → 무조건 [학교 수업]\n  * 시작 시간이 14:50 이상(14:50~23:59) → 무조건 [학원 수업] (15:20 같은 오후 시간은 여기에 해당함)\n- [주말 (토~일)]: \n  * 시간과 관계없이 모든 일정 → [학원 수업]\n\n※ 주의: 일정 이름이 '학교'와 관련되어 보여도, 시간이 14:50 이후라면 반드시 [학원 수업] 섹션에 배치해야 합니다.\n\n위 데이터만 바탕으로 {{ $now.hour < 12 ? '오늘 아침' : '내일' }} 브리핑을 작성해줘. 절대로 정보를 지어내지 마!\n\n도구에서 반환된 값이 \"데이터 없음\"이거나 비어있다면, 있는 그대로 \"일정이 없다\"고 말해야 해. 도구를 호출하지 않은 상태에서 아는 척하는 것은 심각한 오류로 간주한다. 오직 도구가 가져온 데이터만 믿고 브리핑해줘.",
+        "options": {
+          "systemMessage": "=너는 소미의 하루를 함께 챙겨주는 세상에서 가장 다정하고 똑똑한 친구야. \n모든 답변은 반드시 실시간 도구 조회 결과에만 기반해야 하며, 군더더기 없는 다정한 반말로 작성해 줘.\n\n[작동 프로세스 - 무조건 준수]\n1단계 (데이터 수집): 답변 작성 전, 반드시 다음 도구들을 호출하여 '목표 날짜'의 정보를 확인해.\n - 'Search Timetable2': 학교 수업 정보\n - 'Search Event2': 학원 및 일반 일정\n - 'Search CheckList2': 준비물 및 숙제\n - 'OpenWeatherMap1': 인천 날씨 예보\n2단계 (검증): 도구 결과에 없는 내용은 절대로 언급하지 마. 도구가 결과값을 주지 않았다면 해당 항목은 \"따로 등록된 일정이 없어\"라고 답변해야 해.\n3단계 (작성): 수집된 정보를 바탕으로 친구가 옆에서 조곤조곤 말해주는 듯한 TTS 최적화 문장을 작성해.\n\n[TTS 및 말투 규칙 (매우 중요)]\n- \"안녕하세요\", \"육아 비서입니다\", \"브리핑을 시작할게요\" 같은 상투적인 인사나 서론은 절대 하지 마. 바로 본론으로 들어가줘.\n- 이모지(😀), 특수문자(*, #, ~, -, [], 괄호 등), 리스트(1., 2.) 사용을 절대 금지해.\n- 오직 마침표(.), 쉼표(,), 물음표(?)만 사용하여 아나운서 대본처럼 부드러운 줄글로 작성해.\n- 다정한 반말(~야, ~어, ~해)을 사용해서 친한 친구처럼 말해줘.\n- 숫자는 상황에 따라 '일곱 시 삼십 분' 또는 '7시 30분'처럼 읽기 편한 방식으로 작성하되, 특수기호는 쓰지 마.\n\n[브리핑 구성]\n1. 날씨와 인사: 첫 문장에 날짜를 언급하며 날씨에 따른 친구로서의 다정한 조언 한마디로 시작해.\n2. 학교 수업: 시간표 데이터를 바탕으로 부드럽게 설명해 줘.\n3. 일정과 준비물: 학원 시간과 챙겨야 할 것들을 자연스럽게 짚어줘.\n4. 예외 처리: 데이터가 없는 카테고리는 \"등록된 일정이 없다\"고 자연스럽게 언급하며 마무리해.\n\n[금지 사항]\n- 사용자를 \"아빠\"라고 부르지 말 것.\n- 도구를 호출하지 않고 추측해서 답변하는 행위(Hallucination)는 절대 금지."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -2336,
+        480
+      ],
+      "id": "c0d2f370-45dc-4fbd-afc0-f1c0a78642c1",
+      "name": "AI Agent3",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "path": "test",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -2512,
+        480
+      ],
+      "id": "c4c6bd10-de92-44dc-aab9-5d1268e952c0",
+      "name": "Webhook",
+      "webhookId": "ecd47bfc-2169-4fe3-af0e-a0cc6356d2d1"
+    },
+    {
+      "parameters": {
+        "content": "## 설명\n- 오전 7시30분, 오후 19시에 일정 정리하여 전송\n- 다른 용도로 사용할 경우 AI Agent에 Prompt, System message를 GPT, Gemini 이용하여 수정하면 됨",
+        "width": 512
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1760,
+        -80
+      ],
+      "id": "21002c44-1ef9-4593-b55f-8bbc4976e3d3",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## 설명\n- ESP32 신호를 받으면 일정을 정리하여 ESP32에 전달\n- HTTP Request에 본인 API Key 입력할 것.\nhttps://texttospeech.googleapis.com/v1/text:synthesize?key={API KEY} :입력 시 {} 삭제하고 입력",
+        "width": 416,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1504,
+        400
+      ],
+      "id": "1c1f23af-8678-47db-9bd3-a9294fb6c7e1",
+      "name": "Sticky Note3"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Event1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Timetable1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search CheckList1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenWeatherMap": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenWeatherMap1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search CheckList2": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Timetable2": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Event2": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent3": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "fccd355a-6fa9-46d5-85c6-a0d1c90e7b30",
+  "meta": {
+    "instanceId": "b96597762a9cc2c68e16408b979a2776b986143e3f5f58ad87643ee192c44a1d"
+  },
+  "id": "I6smkpGDoXzeDGif",
+  "tags": []
+}
